@@ -63,9 +63,11 @@ def load_and_clean(csv_path: str) -> pd.DataFrame:
     """
 
     # TODO 1 — Read the CSV file into a DataFrame
-    
+    dataFrame = pd.read_csv(csv_path)
+
     # TODO 2 — Convert reservation_status_date into a proper datetime (invalid -> NaT)
-    
+    dataFrame["reservation_status_date"] = pd.to_datetime(dataFrame["reservation_status_date"], errors="coerce")
+
     # TODO 3 — Convert obvious numeric columns to numbers (invalid -> NaN)
     numeric_cols = [
         "is_canceled", "lead_time", "stays_in_weekend_nights", "stays_in_week_nights",
@@ -76,13 +78,21 @@ def load_and_clean(csv_path: str) -> pd.DataFrame:
         "arrival_date_year", "arrival_date_day_of_month",
     ]
     
+    for col in numeric_cols:
+        dataFrame[col] = pd.to_numeric(dataFrame[col], errors="coerce")
+
     # TODO 4 — Create total_guests = adults + children + babies (row-wise sum)
-    
+    dataFrame["total_guests"] = dataFrame["adults"] + dataFrame["children"] + dataFrame["babies"]
+
     # TODO 5 — Keep only rows where total_guests > 0
+    dataFrame = dataFrame[dataFrame["total_guests"] > 0]
+    print(dataFrame.shape)
     
     # TODO 6 — Handle negative prices: if adr < 0, set it to NaN (do NOT drop the row)
+    dataFrame["adr"] = dataFrame["adr"].where(dataFrame["adr"] >= 0, np.nan)
     
     # TODO 7 — Return the cleaned DataFrame
+    return dataFrame
    
     
 # ============================ TASK 2 ============================
@@ -105,16 +115,28 @@ def numeric_kpis(df: pd.DataFrame) -> Dict[str, float]:
     """
 
     # TODO 1 — rows
-
+    rows = len(df)
+    
     # TODO 2 — cols
-
+    cols = df.shape[1]
+    
     # TODO 3 — cancel_rate
-
+    cancel_rate = df["is_canceled"].mean()
+    
     # TODO 4 — adr_p95
-
+    adr_p95 = df["adr"].quantile(0.95)
+    
     # TODO 5 — avg_stay_len
-
-    # TODO 6 — package & return
+    avg_stay_len = (df["stays_in_weekend_nights"] + df["stays_in_week_nights"]).mean()
+   
+    # TODO 6 — package & return 
+    return {
+        "rows": rows,
+        "cols": cols,
+        "cancel_rate": cancel_rate,
+        "adr_p95": adr_p95,
+        "avg_stay_len": avg_stay_len
+    }
     
 
 # ============================ TASK 3 ============================
@@ -132,13 +154,29 @@ def categorical_cancel_stats(df: pd.DataFrame) -> Dict[str, object]:
     """
 
     # TODO 1 — hotel_rates
-
+    grouped_hotels = df.groupby("hotel")
+    cancel_by_hotels = grouped_hotels["is_canceled"]
+    cancel_rate_by_hotel = cancel_by_hotels.mean()
+    hotel_rates = cancel_rate_by_hotel.to_dict()
+    
     # TODO 2 — deposit_rates
-
+    grouped_deposits = df.groupby("deposit_type")
+    cancel_by_deposits = grouped_deposits["is_canceled"]
+    cancel_rate_by_deposit = cancel_by_deposits.mean()
+    deposit_rates = cancel_rate_by_deposit.to_dict()
+    
     # TODO 3 — top_segment_500
+    grouped_segments = df.groupby("market_segment")["is_canceled"]
+    cancel_stats_by_segment = grouped_segments.agg(["mean", "count"])
+    top_segments_500 = cancel_stats_by_segment[cancel_stats_by_segment["count"] >= 500]
+    top_segment = (top_segments_500["mean"].idxmax(), top_segments_500["mean"].max())   
     
     # TODO 4 — return dict
-    
+    return {
+        "hotel_rates": hotel_rates,
+        "deposit_rates": deposit_rates,
+        "top_segment_500": top_segment
+    }
 
 # ============================ TASK 4 ============================
 def build_pca_matrix(df: pd.DataFrame) -> np.ndarray:
@@ -183,3 +221,20 @@ def run_pca(X: np.ndarray, n_components: int = 3) -> Tuple[np.ndarray, np.ndarra
     # TODO 4 — return
    
 # ============================ END OF FILE ============================
+
+if __name__ == "__main__":
+    
+    # Task1:
+    cleanedDataFrame = load_and_clean("hotel_bookings.csv")
+    print(cleanedDataFrame.shape)
+    
+    # Task2:
+    numericKpis = numeric_kpis(cleanedDataFrame)
+    print(numericKpis)
+    
+    # Task3:
+    categoricalCancelStats = categorical_cancel_stats(cleanedDataFrame)
+    print(categoricalCancelStats)
+
+    
+    
