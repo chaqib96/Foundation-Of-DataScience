@@ -81,12 +81,16 @@ def load_and_clean(csv_path: str) -> pd.DataFrame:
     for col in numeric_cols:
         dataFrame[col] = pd.to_numeric(dataFrame[col], errors="coerce")
 
-    # TODO 4 — Create total_guests = adults + children + babies (row-wise sum)
-    dataFrame["total_guests"] = dataFrame["adults"] + dataFrame["children"] + dataFrame["babies"]
+    # TODO 4 — Create total_guests = adults + children + babies (row-wise sum)    
+    dataFrame["total_guests"] = (
+        dataFrame["adults"].fillna(0) + 
+        dataFrame["children"].fillna(0) + 
+        dataFrame["babies"].fillna(0)
+    )
+
 
     # TODO 5 — Keep only rows where total_guests > 0
     dataFrame = dataFrame[dataFrame["total_guests"] > 0]
-    print(dataFrame.shape)
     
     # TODO 6 — Handle negative prices: if adr < 0, set it to NaN (do NOT drop the row)
     dataFrame["adr"] = dataFrame["adr"].where(dataFrame["adr"] >= 0, np.nan)
@@ -191,13 +195,15 @@ def build_pca_matrix(df: pd.DataFrame) -> np.ndarray:
     """
 
     # TODO 1 — select columns in order
-    
+    X_df = df[PCA_FEATURES]
     # TODO 2 — median imputation
-    
+    imputer = SimpleImputer(strategy='median')
+    X_imputed = imputer.fit_transform(X_df)
     # TODO 3 — standardize
-    
+    scaler = StandardScaler()
+    X_scaled = scaler.fit_transform(X_imputed)
     # TODO 4 — return array
-    
+    return X_scaled
 
 # ============================ TASK 5 ============================
 def run_pca(X: np.ndarray, n_components: int = 3) -> Tuple[np.ndarray, np.ndarray]:
@@ -213,28 +219,29 @@ def run_pca(X: np.ndarray, n_components: int = 3) -> Tuple[np.ndarray, np.ndarra
     """
 
     # TODO 1 — init PCA
-
+    pca = PCA(n_components=n_components)
     # TODO 2 — fit
-
+    pca.fit(X)
     # TODO 3 — grab arrays
-    
+    explained_variance_ratio = pca.explained_variance_ratio_
+    components = pca.components_
     # TODO 4 — return
-   
+    return explained_variance_ratio, components
 # ============================ END OF FILE ============================
 
 if __name__ == "__main__":
     
     # Task1:
     cleanedDataFrame = load_and_clean("hotel_bookings.csv")
-    print(cleanedDataFrame.shape)
+    # print(cleanedDataFrame.shape)
     
     # Task2:
     numericKpis = numeric_kpis(cleanedDataFrame)
-    print(numericKpis)
+    # print(numericKpis)
     
     # Task3:
     categoricalCancelStats = categorical_cancel_stats(cleanedDataFrame)
-    print(categoricalCancelStats)
+    # print(categoricalCancelStats)
 
     
     
