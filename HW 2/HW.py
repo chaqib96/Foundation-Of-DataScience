@@ -24,8 +24,7 @@ def load_data(path: str) -> pd.DataFrame:
     -------
     pd.DataFrame
     """
-    # TODO: implement
-    raise NotImplementedError("Implement load_data()")
+    return pd.read_csv(path)
 
 
 def preprocess(df: pd.DataFrame) -> Tuple[np.ndarray, List[str], pd.DataFrame]:
@@ -49,12 +48,13 @@ def preprocess(df: pd.DataFrame) -> Tuple[np.ndarray, List[str], pd.DataFrame]:
     -----
     The tests expect the banned columns to be removed and no NaNs in X.
     """
-    # TODO: implement:
-    #   drop_cols = ["Customer Id", "Defaulted", "Address"]
-    #   df_clean = ...
-    #   feature_names = ...
-    #   X_scaled = StandardScaler().fit_transform(...)
-    raise NotImplementedError("Implement preprocess(df)")
+    drop_cols = ["Customer Id", "Defaulted", "Address"]
+    df_clean = df.drop(columns=drop_cols, errors='ignore')
+    df_clean = df_clean.select_dtypes(include=[np.number])
+    df_clean = df_clean.dropna()
+    feature_names = df_clean.columns.tolist()
+    X_scaled = StandardScaler().fit_transform(df_clean)
+    return X_scaled, feature_names, df_clean
     
     
 # task_2.py
@@ -70,8 +70,12 @@ def elbow_inertia(X: np.ndarray, k_min: int = 1, k_max: int = 10, random_state: 
       - Append km.inertia_ to a list
       - Return the list of inertias (length should be k_max - k_min + 1)
     """
-    # TODO: implement
-    raise NotImplementedError("Implement elbow_inertia(X, k_min, k_max, random_state)")
+    inertias = []
+    for k in range(k_min, k_max + 1):
+        km = KMeans(n_clusters=k, random_state=random_state)
+        km.fit(X)
+        inertias.append(km.inertia_)
+    return inertias
 
 
 def identify_elbow_k() -> int:
@@ -85,8 +89,7 @@ def identify_elbow_k() -> int:
     -----
     The tests will assert the number you return for this dataset.
     """
-    # TODO: implement heuristic and return k for this dataset
-    raise NotImplementedError("Implement identify_elbow_k()")
+    return 2
     
     
     
@@ -103,8 +106,9 @@ def kmeans_cluster(X: np.ndarray, n_clusters: int, random_state: int = 42) -> Tu
       - labels = km.fit_predict(X)
       - Return (labels, km)
     """
-    # TODO: implement
-    raise NotImplementedError("Implement kmeans_cluster(X, n_clusters, random_state)")
+    km = KMeans(n_clusters=n_clusters, random_state=random_state)
+    labels = km.fit_predict(X)
+    return labels, km
 
 
 def kmeans_add_labels_and_centroids(
@@ -126,8 +130,10 @@ def kmeans_add_labels_and_centroids(
       - Group by 'cluster_kmeans' and compute mean over feature_names
       - Return (df_with_labels, centroids_df)
     """
-    # TODO: implement
-    raise NotImplementedError("Implement kmeans_add_labels_and_centroids(...)")
+    df_with_labels = df_clean.copy()
+    df_with_labels['cluster_kmeans'] = labels
+    centroids_df = df_with_labels.groupby('cluster_kmeans')[feature_names].mean()
+    return df_with_labels, centroids_df
     
 
 # task_4.py
@@ -156,8 +162,25 @@ def dbscan_cluster_to_target_k(
       - If exactly target_k, return (labels, model). target_k should be equal to the elbow point in Task 2.
       - If none match, return the best/last attempt
     """
-    # TODO: implement
-    raise NotImplementedError("Implement dbscan_cluster_to_target_k(X, target_k)")
+    eps_values = [0.5, 0.8, 1.0, 1.2, 1.5, 2.0]
+    min_samples_values = [3, 5, 8]
+    
+    best_labels = None
+    best_model = None
+    
+    for eps in eps_values:
+        for min_samples in min_samples_values:
+            dbscan = DBSCAN(eps=eps, min_samples=min_samples)
+            labels = dbscan.fit_predict(X)
+            num_clusters = _count_clusters(labels)
+            
+            if num_clusters == target_k:
+                return labels, dbscan
+            
+            best_labels = labels
+            best_model = dbscan
+    
+    return best_labels, best_model
 
 
 def dbscan_add_labels(df_clean: pd.DataFrame, labels: np.ndarray) -> pd.DataFrame:
@@ -169,8 +192,9 @@ def dbscan_add_labels(df_clean: pd.DataFrame, labels: np.ndarray) -> pd.DataFram
       - Add column 'cluster_dbscan' with the provided labels
       - Return the new DataFrame
     """
-    # TODO: implement
-    raise NotImplementedError("Implement dbscan_add_labels(df_clean, labels)")
+    df_with_labels = df_clean.copy()
+    df_with_labels['cluster_dbscan'] = labels
+    return df_with_labels
 
 
 
@@ -197,8 +221,19 @@ def compute_silhouettes(
           else set db_sil = np.nan
       - Return (km_sil, db_sil) as floats
     """
-    # TODO: implement
-    raise NotImplementedError("Implement compute_silhouettes(X, km_labels, db_labels)")
+    km_sil = silhouette_score(X, km_labels)
+    mask = db_labels != -1
+    X_db = X[mask]
+    db_labels_clean = db_labels[mask]
+    
+    # Check if there atleast 2 clusters and 2 samples
+    unique_labels = np.unique(db_labels_clean)
+    if len(unique_labels) >= 2 and len(db_labels_clean) >= 2:
+        db_sil = silhouette_score(X_db, db_labels_clean)
+    else:
+        db_sil = np.nan
+    
+    return float(km_sil), float(db_sil)
 
 
 

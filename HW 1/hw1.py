@@ -93,7 +93,7 @@ def load_and_clean(csv_path: str) -> pd.DataFrame:
     dataFrame = dataFrame[dataFrame["total_guests"] > 0]
     
     # TODO 6 — Handle negative prices: if adr < 0, set it to NaN (do NOT drop the row)
-    dataFrame["adr"] = dataFrame["adr"].where(dataFrame["adr"] >= 0, np.nan)
+    dataFrame["adr"] = np.where(dataFrame["adr"] >= 0, dataFrame["adr"], np.nan)
     
     # TODO 7 — Return the cleaned DataFrame
     return dataFrame
@@ -228,20 +228,3 @@ def run_pca(X: np.ndarray, n_components: int = 3) -> Tuple[np.ndarray, np.ndarra
     # TODO 4 — return
     return explained_variance_ratio, components
 # ============================ END OF FILE ============================
-
-if __name__ == "__main__":
-    
-    # Task1:
-    cleanedDataFrame = load_and_clean("hotel_bookings.csv")
-    # print(cleanedDataFrame.shape)
-    
-    # Task2:
-    numericKpis = numeric_kpis(cleanedDataFrame)
-    # print(numericKpis)
-    
-    # Task3:
-    categoricalCancelStats = categorical_cancel_stats(cleanedDataFrame)
-    # print(categoricalCancelStats)
-
-    
-    
